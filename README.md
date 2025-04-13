@@ -30,10 +30,6 @@ pdf-translator-gui
 │   └── utils
 │       ├── __init__.py
 │       └── file_handler.py    # Gestion des fichiers
-├── tests
-│   ├── __init__.py
-│   └── test_translator.py     # Tests unitaires
-├── requirements.txt           # Dépendances Python
 ├── build_exe.py               # Script pour créer un exécutable
 └── README.md                  # Documentation
 ```
