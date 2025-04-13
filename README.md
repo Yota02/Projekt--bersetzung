@@ -1,4 +1,4 @@
-# Empire Translator - Traduction PDF avec Interface Graphique
+# Projekt Bersetzung - Traduction PDF avec Interface Graphique
 
 **Empire Translator** est une application de traduction de documents PDF avec une interface graphique élégante inspirée de l'univers de *Tanya the Evil*. Elle permet aux utilisateurs de traduire facilement des fichiers PDF dans différentes langues tout en conservant leur mise en page.
 
