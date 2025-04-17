@@ -40,32 +40,50 @@ class PDFTranslator:
         translator = GoogleTranslator(source='auto', target=lang_code)
         
         total_paragraphs = len(doc.paragraphs)
+        current_text = []
+        
         for i, para in enumerate(doc.paragraphs, 1):
             text = para.text.strip()
+            
+            # Si le texte se termine par un point, c'est probablement une fin de phrase
             if text:
-                try:
-                    chunks = [text[i:i+4000] for i in range(0, len(text), 4000)]
-                    translated_chunks = []
+                # Ajoute le texte au paragraphe en cours
+                current_text.append(text)
+                
+                # Vérifie si c'est la fin d'un paragraphe logique
+                if text.endswith(('.', '!', '?', ':', ';')) or i == total_paragraphs:
+                    full_text = ' '.join(current_text)
                     
-                    for chunk in chunks:
-                        try:
-                            translated_chunk = translator.translate(chunk)
-                            translated_chunks.append(translated_chunk)
-                            time.sleep(2)
-                        except Exception as e:
-                            self._log(f"Erreur de traduction pour un segment: {str(e)}")
-                            translated_chunks.append(chunk)
-                    
-                    para.text = ' '.join(translated_chunks)
+                    try:
+                        # Découpe en chunks de 4000 caractères maximum
+                        chunks = [full_text[i:i+4000] for i in range(0, len(full_text), 4000)]
+                        translated_chunks = []
+                        
+                        for chunk in chunks:
+                            try:
+                                translated_chunk = translator.translate(chunk)
+                                translated_chunks.append(translated_chunk)
+                            except Exception as e:
+                                self._log(f"Erreur de traduction pour un segment: {str(e)}")
+                                translated_chunks.append(chunk)
+                        
+                        # Met à jour le texte du dernier paragraphe du groupe
+                        para.text = ' '.join(translated_chunks)
+                        # Efface les paragraphes précédents du groupe
+                        for prev_para in doc.paragraphs[i-len(current_text):i-1]:
+                            prev_para.text = ''
+                            
+                        current_text = []  # Réinitialise pour le prochain groupe
+                        
+                    except Exception as e:
+                        self._log(f"Erreur lors de la traduction du paragraphe {i}: {str(e)}")
+                        continue
+                        
                     progress = (i / total_paragraphs) * 100
                     self._log(f"Progression: {i}/{total_paragraphs} paragraphes traités")
                     if self.callback:
                         self.callback(progress)
-                    
-                except Exception as e:
-                    self._log(f"Erreur lors de la traduction du paragraphe {i}: {str(e)}")
-                    continue
-        
+    
         self._log("Sauvegarde du document traduit...")
         doc.save(output_path)
         
