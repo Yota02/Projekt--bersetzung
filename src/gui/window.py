@@ -18,8 +18,8 @@ LANGUAGES = {
 class TranslatorWindow:
     def __init__(self, root):
         self.root = root
-        self.root.title("Projekt Übersetzung - Empire Translator")
-        self.root.geometry("700x600")
+        self.root.title("Projekt Übersetzung")
+        self.root.geometry("800x700")
         self.root.configure(bg='#2B2D32')
         
         icon_path = resource_path(os.path.join("src", "gui", "assets", "icon.ico"))
@@ -40,8 +40,8 @@ class TranslatorWindow:
         self.configure_imperial_style()
         
         # Variables
-        self.input_file = tk.StringVar()
-        self.output_file = tk.StringVar()
+        self.input_files = []  # Liste de fichiers au lieu d'un seul
+        self.output_directory = tk.StringVar()
         self.target_lang = tk.StringVar(value='French')
         
         # Charger les ressources
@@ -91,15 +91,15 @@ class TranslatorWindow:
     def _create_widgets(self):
         # Frame principal
         main_frame = ttk.Frame(self.root, padding="20", style='Empire.TFrame')
-        main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
         # En-tête avec sceau impérial
         header_frame = ttk.Frame(main_frame, style='Empire.TFrame')
-        header_frame.grid(row=0, column=0, columnspan=3, pady=(0, 20))
+        header_frame.pack(fill=tk.X, pady=(0, 20))
 
         if self.imperial_seal:
             seal_label = ttk.Label(header_frame, image=self.imperial_seal)
-            seal_label.grid(row=0, column=0, padx=10)
+            seal_label.pack(side=tk.LEFT, padx=10)
 
         title_label = ttk.Label(header_frame,
                               text="BUREAU IMPÉRIAL DE TRADUCTION\nSECTION 203",
@@ -107,106 +107,149 @@ class TranslatorWindow:
                               foreground='#D4B886',
                               background='#2B2D32',
                               justify='center')
-        title_label.grid(row=0, column=1, pady=10)
+        title_label.pack(side=tk.RIGHT, expand=True, pady=10, padx=20)
 
         # Cadre des documents
         doc_frame = ttk.Frame(main_frame, style='Empire.TFrame')
-        doc_frame.grid(row=1, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=10)
+        doc_frame.pack(fill=tk.X, pady=10)
 
-        # Section document source
-        ttk.Label(doc_frame,
-                 text="DOCUMENT SOURCE:",
-                 style='Empire.TLabel').grid(row=0, column=0, sticky=tk.W, pady=5)
-        ttk.Entry(doc_frame,
-                 textvariable=self.input_file,
-                 width=60,
-                 style='Empire.TEntry').grid(row=0, column=1, padx=5)
-        ttk.Button(doc_frame,
-                  text="LOCALISER",
-                  command=self._browse_input,
-                  style='Empire.TButton').grid(row=0, column=2)
+        # Section documents source (multiple)
+        source_frame = ttk.Frame(doc_frame, style='Empire.TFrame')
+        source_frame.pack(fill=tk.X, pady=5)
+        
+        ttk.Label(source_frame, text="DOCUMENTS SOURCE:", style='Empire.TLabel').pack(side=tk.LEFT)
+        
+        self.files_display = tk.Text(source_frame, height=3, width=50, bg='#1A1B1E', fg='#D4B886')
+        self.files_display.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
+        self.files_display.insert(tk.END, "Aucun fichier sélectionné")
+        self.files_display.config(state=tk.DISABLED)
+        
+        ttk.Button(source_frame, text="SÉLECTIONNER", command=self._browse_input_multiple, 
+                   style='Empire.TButton').pack(side=tk.RIGHT)
 
-        # Section document de sortie
-        ttk.Label(doc_frame,
-                 text="ARCHIVE DE DESTINATION:",
-                 style='Empire.TLabel').grid(row=1, column=0, sticky=tk.W, pady=5)
-        ttk.Entry(doc_frame,
-                 textvariable=self.output_file,
-                 width=60,
-                 style='Empire.TEntry').grid(row=1, column=1, padx=5)
-        ttk.Button(doc_frame,
-                  text="DÉSIGNER",
-                  command=self._browse_output,
-                  style='Empire.TButton').grid(row=1, column=2)
+        # Section dossier de sortie
+        output_frame = ttk.Frame(doc_frame, style='Empire.TFrame')
+        output_frame.pack(fill=tk.X, pady=5)
+        
+        ttk.Label(output_frame, text="DOSSIER DE DESTINATION:", style='Empire.TLabel').pack(side=tk.LEFT)
+        
+        ttk.Entry(output_frame, textvariable=self.output_directory, width=60,
+                 style='Empire.TEntry').pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
+                 
+        ttk.Button(output_frame, text="PARCOURIR", command=self._browse_output_directory,
+                  style='Empire.TButton').pack(side=tk.RIGHT)
 
         # Section langue
         lang_frame = ttk.Frame(main_frame, style='Empire.TFrame')
-        lang_frame.grid(row=2, column=0, columnspan=3, pady=20)
+        lang_frame.pack(fill=tk.X, pady=10)
 
-        ttk.Label(lang_frame,
-                 text="LANGUE CIBLE:",
-                 style='Empire.TLabel').grid(row=0, column=0, sticky=tk.W)
+        ttk.Label(lang_frame, text="LANGUE CIBLE:", style='Empire.TLabel').pack(side=tk.LEFT)
         
-        lang_combo = ttk.Combobox(lang_frame,
-                                textvariable=self.target_lang,
-                                values=list(LANGUAGES.keys()),
-                                width=30,
-                                state='readonly')
-        lang_combo.grid(row=0, column=1, sticky=tk.W, padx=5)
+        lang_combo = ttk.Combobox(lang_frame, textvariable=self.target_lang,
+                                values=list(LANGUAGES.keys()), width=30, state='readonly')
+        lang_combo.pack(side=tk.LEFT, padx=5)
+
+        # File d'attente
+        queue_frame = ttk.Frame(main_frame, style='Empire.TFrame')
+        queue_frame.pack(fill=tk.BOTH, expand=True, pady=10)
+        
+        queue_header = ttk.Frame(queue_frame, style='Empire.TFrame')
+        queue_header.pack(fill=tk.X)
+        
+        ttk.Label(queue_header, text="FILE DE TRADUCTION:", style='Empire.TLabel').pack(side=tk.LEFT)
+        
+        self.queue_status = ttk.Label(queue_header, text="Statut: 0/0 fichiers", style='Empire.TLabel')
+        self.queue_status.pack(side=tk.RIGHT)
+        
+        # Affichage de la file d'attente
+        queue_container = ttk.Frame(queue_frame, style='Empire.TFrame')
+        queue_container.pack(fill=tk.BOTH, expand=True)
+        
+        self.queue_display = tk.Text(queue_container, height=6, width=70, bg='#1A1B1E', fg='#D4B886')
+        self.queue_display.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        
+        queue_scroll = ttk.Scrollbar(queue_container, command=self.queue_display.yview)
+        queue_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        self.queue_display.config(yscrollcommand=queue_scroll.set)
 
         # Barre de progression
-        self.progress = ttk.Progressbar(main_frame,
-                                      length=600,
-                                      mode='determinate',
+        progress_frame = ttk.Frame(main_frame, style='Empire.TFrame')
+        progress_frame.pack(fill=tk.X, pady=10)
+        
+        self.progress = ttk.Progressbar(progress_frame, length=600, mode='determinate',
                                       style='Empire.Horizontal.TProgressbar')
-        self.progress.grid(row=3, column=0, columnspan=3, pady=20)
+        self.progress.pack(fill=tk.X)
 
         # Bouton d'exécution
-        execute_button = ttk.Button(main_frame,
-                                  text="EXÉCUTER LA TRADUCTION",
-                                  command=self.start_translation,
-                                  style='Empire.TButton')
-        execute_button.grid(row=4, column=0, columnspan=3, pady=10)
+        button_frame = ttk.Frame(main_frame, style='Empire.TFrame')
+        button_frame.pack(fill=tk.X, pady=10)
+        
+        execute_button = ttk.Button(button_frame, text="EXÉCUTER LA TRADUCTION",
+                                  command=self.start_translation, style='Empire.TButton')
+        execute_button.pack()
 
         # Zone de rapport
         log_frame = ttk.Frame(main_frame, style='Empire.TFrame')
-        log_frame.grid(row=5, column=0, columnspan=3, sticky=(tk.W, tk.E))
+        log_frame.pack(fill=tk.BOTH, expand=True)
 
-        scrollbar = ttk.Scrollbar(log_frame)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-
-        self.log_text = tk.Text(log_frame,
-                              height=10,
-                              width=70,
-                              bg='#1A1B1E',
-                              fg='#D4B886',
-                              font=('Courier New', 10),
-                              yscrollcommand=scrollbar.set)
+        self.log_text = tk.Text(log_frame, height=8, width=70, bg='#1A1B1E', fg='#D4B886',
+                              font=('Courier New', 10))
         self.log_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        scrollbar.config(command=self.log_text.yview)
+        
+        scrollbar = ttk.Scrollbar(log_frame, command=self.log_text.yview)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.log_text.config(yscrollcommand=scrollbar.set)
 
-        # Configuration du redimensionnement
-        self.root.grid_rowconfigure(0, weight=1)
-        self.root.grid_columnconfigure(0, weight=1)
-
-    def _browse_input(self):
-        filename = filedialog.askopenfilename(
-            title="SÉLECTION DU DOCUMENT SOURCE",
+    def _browse_input_multiple(self):
+        filenames = filedialog.askopenfilenames(
+            title="SÉLECTION DES DOCUMENTS SOURCE",
             filetypes=[("Documents PDF", "*.pdf")]
         )
-        if filename:
-            self.input_file.set(filename)
-            output = filename.rsplit('.', 1)[0] + '_traduit.docx'
-            self.output_file.set(output)
+        if filenames:
+            self.input_files = list(filenames)
+            self.files_display.config(state=tk.NORMAL)
+            self.files_display.delete(1.0, tk.END)
+            for filename in self.input_files:
+                self.files_display.insert(tk.END, f"{os.path.basename(filename)}\n")
+            self.files_display.config(state=tk.DISABLED)
+            
+            # Définir le dossier de sortie par défaut (dossier du premier fichier)
+            if not self.output_directory.get():
+                self.output_directory.set(os.path.dirname(self.input_files[0]))
 
-    def _browse_output(self):
-        filename = filedialog.asksaveasfilename(
-            title="DÉSIGNATION DE L'ARCHIVE DE DESTINATION",
-            defaultextension=".docx",
-            filetypes=[("Documents Word", "*.docx")]
+    def _browse_output_directory(self):
+        directory = filedialog.askdirectory(
+            title="SÉLECTION DU DOSSIER DE DESTINATION"
         )
-        if filename:
-            self.output_file.set(filename)
+        if directory:
+            self.output_directory.set(directory)
+
+    def add_to_queue_display(self, input_file, output_file, lang):
+        self.queue_display.config(state=tk.NORMAL)
+        file_id = f"file_{len(self.input_files)}"
+        self.queue_display.insert(tk.END, f"[EN ATTENTE] {os.path.basename(input_file)} -> {os.path.basename(output_file)}\n")
+        self.queue_display.tag_add(file_id, f"{float(self.queue_display.index('end'))-1.0}", f"{self.queue_display.index('end')}")
+        self.queue_display.config(state=tk.DISABLED)
+
+    def mark_file_completed(self, input_file):
+        self.queue_display.config(state=tk.NORMAL)
+        content = self.queue_display.get(1.0, tk.END)
+        lines = content.split('\n')
+        for i, line in enumerate(lines):
+            if os.path.basename(input_file) in line:
+                lines[i] = line.replace('[EN ATTENTE]', '[TERMINÉ]')
+                break
+        
+        self.queue_display.delete(1.0, tk.END)
+        self.queue_display.insert(tk.END, '\n'.join(lines))
+        self.queue_display.config(state=tk.DISABLED)
+    
+    def update_queue_status(self, current, total):
+        if total > 0:
+            status_text = f"Statut: {current}/{total} fichiers"
+        else:
+            status_text = "Statut: 0/0 fichiers"
+        self.queue_status.config(text=status_text)
 
     def log(self, message):
         timestamp = datetime.now().strftime("[%H:%M:%S]")
@@ -214,10 +257,17 @@ class TranslatorWindow:
         self.log_text.see(tk.END)
 
     def start_translation(self):
-        if not self.input_file.get() or not self.output_file.get():
+        if not self.input_files:
             messagebox.showerror(
                 "ERREUR DE PROCÉDURE",
-                "VEUILLEZ DÉSIGNER LES DOCUMENTS SOURCE ET DE DESTINATION"
+                "VEUILLEZ SÉLECTIONNER AU MOINS UN DOCUMENT SOURCE"
+            )
+            return
+            
+        if not self.output_directory.get() or not os.path.isdir(self.output_directory.get()):
+            messagebox.showerror(
+                "ERREUR DE PROCÉDURE",
+                "VEUILLEZ DÉSIGNER UN DOSSIER DE DESTINATION VALIDE"
             )
             return
 
@@ -229,5 +279,10 @@ class TranslatorWindow:
                 f"Langue cible '{selected_lang}' non prise en charge."
             )
             return
-
+        
+        # Vider la file d'attente d'affichage
+        self.queue_display.config(state=tk.NORMAL)
+        self.queue_display.delete(1.0, tk.END)
+        self.queue_display.config(state=tk.DISABLED)
+        
         self.root.event_generate('<<StartTranslation>>')

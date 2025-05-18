@@ -1,0 +1,5 @@
+pdf2docx
+python-docx
+deep-translator
+pillow
+docx2pdf
